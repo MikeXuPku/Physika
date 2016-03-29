@@ -325,7 +325,7 @@ void VolumetricMeshRender<Scalar,Dim>::renderVertexWithColor(const std::vector<u
     {
         Vector<Scalar,Dim> position = this->mesh_->vertPos(vertex_id[vertex_idx]);
         if(vert_displacement_) //apply vertex displacement if any
-            position += (*vert_displacement_)[vertex_idx];
+            position += (*vert_displacement_)[vertex_id[vertex_idx]];
         openGLVertex(position);
     }
     glEnd();
@@ -366,7 +366,7 @@ void VolumetricMeshRender<Scalar,Dim>::renderVertexWithColor(const std::vector<u
         {
             if(vert_displacement_->size() != num_vertex)
                 throw PhysikaException("Vertex displacement and vertex number mismatch!");
-            position += (*vert_displacement_)[vertex_idx];
+            position += (*vert_displacement_)[vertex_id[vertex_idx]];
         }
         openGLVertex(position);
     }

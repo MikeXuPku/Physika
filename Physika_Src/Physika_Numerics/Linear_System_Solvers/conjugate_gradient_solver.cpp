@@ -46,8 +46,10 @@ bool ConjugateGradientSolver<Scalar>::solveWithoutPreconditioner(const LinearSys
     GeneralizedVector<Scalar> *r = b.clone(); //create a vector with the same type with b
     system.multiply(x,*r); //r = Ax
     (*r) *= -1;
+	//std::cout << " rT*r:" << system.innerProduct(*r, *r)<<std::endl;
     (*r) += b; //r = b - Ax
     system.filter(*r); //filter procedure to keep invariant of some components
+	//std::cout << " rT*r:" << system.innerProduct(*r, *r) << std::endl;
     GeneralizedVector<Scalar> *d = r->clone();
     Scalar delta_0 = system.innerProduct(*r, *r); 
     Scalar delta = delta_0;
@@ -59,15 +61,18 @@ bool ConjugateGradientSolver<Scalar>::solveWithoutPreconditioner(const LinearSys
         system.multiply(*d,*q);
         system.filter(*q);
         Scalar alpha = delta / (system.innerProduct(*d, *q));
+		//std::cout << "iteration:" << this->iterations_used_ << " delta:" << delta << " alpha:" << alpha << std::endl;
         *temp = *d;
         *temp *= alpha;
         x += *temp; //x = x + alpha*d
         if((this->iterations_used_)%50 == 0) //direct compute residual every 50 iterations
         {
+			//std::cout << " xT*x:" << system.innerProduct(x,x);
             system.multiply(x,*r);
             (*r) *= -1;
             (*r) += b; //r = b - Ax
             system.filter(*r);
+			
         }
         else
         {
@@ -77,7 +82,9 @@ bool ConjugateGradientSolver<Scalar>::solveWithoutPreconditioner(const LinearSys
         }
         Scalar delta_old = delta;
         delta = system.innerProduct(*r, *r);
+		//std::cout<< "delta:" << delta  << " new delta:" << delta;
         Scalar beta = delta/delta_old;
+		//std::cout << " beta:" << beta << std::endl;
         *temp = *d;
         *temp *= beta;
         *d = *r;

@@ -43,6 +43,9 @@ public:
     virtual ~VolumetricMesh();
     VolumetricMesh<Scalar,Dim>& operator= (const VolumetricMesh<Scalar,Dim> &volumetric_mesh);
     
+	//set
+	void setVertPos(unsigned int vert_idx, Vector<Scalar, Dim> pos);
+
     //query
     inline unsigned int       vertNum() const{return vertices_.size();}
     inline unsigned int       eleNum() const{return ele_num_;}

@@ -91,7 +91,14 @@ void GlutWindow::createWindow()
     glutMouseFunc(mouse_function_);
     glutMouseWheelFunc(mouse_wheel_function_);
     (*init_function_)(); //call the init function before entering main loop
-    glutMainLoop();
+}
+
+void GlutWindow::mainLoop(){
+	glutMainLoop();
+}
+
+void GlutWindow::mainLoopEvent(){
+	glutMainLoopEvent();
 }
 
 void GlutWindow::closeWindow()

@@ -99,6 +99,14 @@ unsigned int VolumetricMesh<Scalar,Dim>::eleVertNum(unsigned int ele_idx) const
 }
 
 template <typename Scalar, int Dim>
+void VolumetricMesh<Scalar, Dim>::setVertPos(unsigned int vert_idx, Vector<Scalar, Dim> pos)
+{
+	if (vert_idx >= vertNum())
+		throw PhysikaException("Vertex index out of range!");
+	vertices_[vert_idx] = pos;
+}
+
+template <typename Scalar, int Dim>
 unsigned int VolumetricMesh<Scalar,Dim>::eleVertIndex(unsigned int ele_idx, unsigned int local_vert_idx) const
 {   
     if(ele_idx>=this->ele_num_)

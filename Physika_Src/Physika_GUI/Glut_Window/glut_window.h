@@ -71,6 +71,8 @@ public:
     GlutWindow(const std::string &window_name, unsigned int width, unsigned int height); //initialize a window with given name and size
     ~GlutWindow();
     void createWindow(); //create window with the parameters set
+	void mainLoop();
+	void mainLoopEvent();
     void closeWindow();  //close window
     const std::string& name() const;
     int width() const;

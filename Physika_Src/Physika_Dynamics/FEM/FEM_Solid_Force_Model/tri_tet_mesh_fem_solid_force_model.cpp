@@ -153,7 +153,34 @@ void TriTetMeshFEMSolidForceModel<Scalar,Dim>::computeGlobalInternalForceDiffere
                                                const std::vector<Vector<Scalar,Dim> > &vert_pos_differentials,
                                                std::vector<Vector<Scalar,Dim> > &force_differentials) const
 {
-    throw PhysikaException("Not implemented!");
+	const VolumetricMesh<Scalar, Dim> &sim_mesh = (this->simulation_mesh_);
+	unsigned int vert_num = sim_mesh.vertNum();
+	if (current_vert_pos.size() != vert_num || vert_pos_differentials.size()!=vert_num)
+		throw PhysikaException("Size of provided vertex position vector or vert_pos_differentials vector doesn't match mesh vertex number!");
+	force_differentials.clear();
+	force_differentials.resize(vert_num, Vector<Scalar, Dim>(0));
+	unsigned int ele_num = sim_mesh.eleNum();
+	std::vector<Vector<Scalar, Dim> > ele_force_differentials;
+	std::vector<Vector<Scalar, Dim> > ele_vert_pos;
+	std::vector<Vector<Scalar, Dim> > ele_vert_pos_differentials;
+	for (unsigned int ele_idx = 0; ele_idx < ele_num; ++ele_idx)
+	{
+		unsigned int ele_vert_num = sim_mesh.eleVertNum(ele_idx);
+		ele_vert_pos.resize(ele_vert_num);
+		ele_vert_pos_differentials.resize(ele_vert_num);
+		for (unsigned int local_vert_idx = 0; local_vert_idx < ele_vert_num; ++local_vert_idx)
+		{
+			unsigned int vert_idx = sim_mesh.eleVertIndex(ele_idx, local_vert_idx);
+			ele_vert_pos[local_vert_idx] = current_vert_pos[vert_idx];
+			ele_vert_pos_differentials[local_vert_idx] = vert_pos_differentials[vert_idx];
+		}
+		computeElementInternalForceDifferentials(ele_idx, ele_vert_pos,ele_vert_pos_differentials,ele_force_differentials);
+		for (unsigned int local_vert_idx = 0; local_vert_idx < ele_vert_num; ++local_vert_idx)
+		{
+			unsigned int vert_idx = sim_mesh.eleVertIndex(ele_idx, local_vert_idx);
+			force_differentials[vert_idx] += ele_force_differentials[local_vert_idx];
+		}
+	}
 }
 
 template <typename Scalar, int Dim>
@@ -163,7 +190,71 @@ void TriTetMeshFEMSolidForceModel<Scalar,Dim>::computeElementInternalForceDiffer
                                                 const std::vector<Vector<Scalar,Dim> > &vert_pos_differentials,
                                                 std::vector<Vector<Scalar,Dim> > &force_differentials) const
 {
-    throw PhysikaException("Not implemented!");
+	const VolumetricMesh<Scalar, Dim> &sim_mesh = (this->simulation_mesh_);
+	unsigned int ele_num = sim_mesh.eleNum();
+	if (ele_idx >= ele_num)
+		throw PhysikaException("Simulation mesh element index out of range!");
+	unsigned int ele_vert_num = sim_mesh.eleVertNum(ele_idx);
+	if (current_vert_pos.size() != ele_vert_num || vert_pos_differentials.size() != ele_vert_num)
+		throw PhysikaException("Size of provided vertex position vector or position differentials doesn't match element vertex number!");
+	VolumetricMeshInternal::ElementType ele_type = sim_mesh.elementType();
+	SquareMatrix<Scalar, Dim> shape_matrix;
+	SquareMatrix<Scalar, Dim> shape_matrix_differentials;
+	switch (ele_type)
+	{
+	case VolumetricMeshInternal::TRI:
+	{
+		throw PhysikaException("not implemented!");
+	}
+	case VolumetricMeshInternal::TET:
+	{
+										std::vector<Vector<Scalar, 3> > current_vert_pos_trait(current_vert_pos.size());
+										std::vector<Vector<Scalar, 3>> vert_pos_differentials_trait(vert_pos_differentials.size());
+										for (unsigned int vert_idx = 0; vert_idx < current_vert_pos.size(); ++vert_idx)
+										{
+											current_vert_pos_trait[vert_idx][0] = current_vert_pos[vert_idx][0];
+											vert_pos_differentials_trait[vert_idx][0] = vert_pos_differentials[vert_idx][0];
+											current_vert_pos_trait[vert_idx][1] = current_vert_pos[vert_idx][1];
+											vert_pos_differentials_trait[vert_idx][1] = vert_pos_differentials[vert_idx][1];
+											current_vert_pos_trait[vert_idx][2] = current_vert_pos[vert_idx][2];
+											vert_pos_differentials_trait[vert_idx][2] = vert_pos_differentials[vert_idx][2];
+										}
+										Vector<Scalar, 3> v1_minus_v4 = current_vert_pos_trait[0] - current_vert_pos_trait[3];
+										Vector<Scalar, 3> v2_minus_v4 = current_vert_pos_trait[1] - current_vert_pos_trait[3];
+										Vector<Scalar, 3> v3_minus_v4 = current_vert_pos_trait[2] - current_vert_pos_trait[3];
+										SquareMatrix<Scalar, 3> current_shape_matrix(v1_minus_v4, v2_minus_v4, v3_minus_v4);
+										current_shape_matrix = current_shape_matrix.transpose();
+										v1_minus_v4 = vert_pos_differentials_trait[0] - vert_pos_differentials_trait[3];
+										v2_minus_v4 = vert_pos_differentials_trait[1] - vert_pos_differentials_trait[3];
+										v3_minus_v4 = vert_pos_differentials_trait[2] - vert_pos_differentials_trait[3];
+										SquareMatrix<Scalar, 3> current_shape_matrix_differentials(v1_minus_v4, v2_minus_v4, v3_minus_v4);
+										current_shape_matrix_differentials = current_shape_matrix_differentials.transpose();
+										for (unsigned int i = 0; i < 3; ++i)
+										for (unsigned int j = 0; j < 3; ++j){
+										shape_matrix(i, j) = current_shape_matrix(i, j);
+										shape_matrix_differentials(i, j) = current_shape_matrix_differentials(i, j);
+										}
+										break;
+	}
+	case VolumetricMeshInternal::QUAD:
+	case VolumetricMeshInternal::CUBIC:
+	case VolumetricMeshInternal::NON_UNIFORM:
+		throw PhysikaException("Simulation mesh element type and FEM force model mismatch!");
+	}
+	SquareMatrix<Scalar, Dim> deform_grad = shape_matrix*reference_shape_matrix_inv_[ele_idx];
+	SquareMatrix<Scalar, Dim> deform_grad_differentials = shape_matrix_differentials*reference_shape_matrix_inv_[ele_idx];
+	const ConstitutiveModel<Scalar, Dim> &ele_material = this->elementMaterial(ele_idx);
+	SquareMatrix<Scalar, Dim> first_Piola_Kirchhoff_stress_differentials = ele_material.firstPiolaKirchhoffStressDifferential(deform_grad, deform_grad_differentials);
+	SquareMatrix<Scalar, Dim> force_as_col_differentials = (-1.0)*reference_element_volume_[ele_idx] * first_Piola_Kirchhoff_stress_differentials*(reference_shape_matrix_inv_[ele_idx].transpose());
+	force_differentials.resize(ele_vert_num);
+	force_differentials[ele_vert_num - 1] = Vector<Scalar, Dim>(0);
+	for (unsigned int i = 0; i < ele_vert_num - 1; ++i)
+	{
+		force_differentials[i] = force_as_col_differentials.colVector(i);
+		force_differentials[ele_vert_num - 1] -= force_differentials[i];
+	}
+
+    
 }
 
 template <typename Scalar, int Dim>
