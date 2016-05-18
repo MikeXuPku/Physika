@@ -13,36 +13,46 @@
  */
 
 #include <iostream>
-#include "Physika_Core/Array/array.h"
-#include "Physika_Geometry/Surface_Mesh/vertex.h"
-#include "Physika_Geometry/Surface_Mesh/triangle.h"
-#include "Physika_Geometry/Surface_Mesh/edge.h"
-#include "Physika_Geometry/Surface_Mesh/surface_mesh.h"
-
+#include "Physika_Core/Arrays/array.h"
+#include "Physika_Geometry/Boundary_Meshes/vertex.h"
+#include "Physika_Geometry/Boundary_Meshes/edge.h"
+#include "Physika_Geometry/Boundary_Meshes/surface_mesh.h"
+#include "Physika_IO/Surface_Mesh_IO/surface_mesh_io.h"
+#include<fstream>
 
 using namespace std;
-using Physika::Vertex;
-using Physika::Edge;
-using Physika::Triangle;
-using Physika::SurfaceMesh;
-using Physika::Array;
-int main()
-{
-    Array<int> abc(10,1);
-    cout<<abc[1];
-    cout<<abc;
-	Vertex<float> vertex(1,2,3);
-	Vertex<float> vertex1(2,3,4);
-	cout<<vertex<<endl;
-	cout<<vertex1<<endl;
-	cout<<vertex+vertex1<<endl;
-	cout<<vertex-vertex1<<endl;
+using namespace Physika;
 
-	Edge<float> edge;
-	Triangle<double> trianges;
-	SurfaceMesh<float> mesh;
-	mesh.computeNormals();
-	int a;
-	cin>>a;
+int main()
+{/*
+	SurfaceMesh<double> mesh;
+	SurfaceMeshIO<double>::load(string(""), &mesh);
+	fstream fileout("vertexData.txt");
+	double ymin = 10000;
+	for (int i = 0; i < mesh.numVertices(); ++i){
+		Vector<double, 3> pos = mesh.vertexPosition(i);
+		fileout << pos << endl;
+		if (pos[1] < ymin)ymin = pos[1];
+	}
+	ymin = ymin - 10;
+	for (int i = 0; i < mesh.numVertices(); ++i){
+		Vector<double, 3> pos = mesh.vertexPosition(i);
+		pos[1] = ymin;
+		fileout << pos << endl;
+	}
+	fileout.close();
+	return 0;
+	*/
+
+	SurfaceMesh<double> mesh;
+	SurfaceMeshIO<double>::load(string(""), &mesh);
+	double ymin = 10000;
+	for (unsigned int i = 0; i < mesh.numVertices(); ++i){
+		Vector<double, 3>pos = mesh.vertexPosition(i);
+		if (pos[1] < ymin)ymin = pos[1];
+	}
+	ymin = ymin - 10;
+	
+
 	return 0;
 }

@@ -80,7 +80,7 @@ elif compiler=='msvc':
     additional_libs.append('Advapi32')
 
 #SRC FILES
-src_files=['constitutive_models_test.cpp']
+src_files=['FEMTest/elastostatic.cpp']
 inc_files=[]
 #for dir,_,_ in os.walk(src_root_path):
 #    if dir not in ignored_src_path:
@@ -133,9 +133,9 @@ else:
       CCFLAGS=['/Od','/Zi','/EHsc','/W3']
    ENV['TMP']=os.environ['TMP']
    if os_architecture=='32bit':
-   	arc='x86'
+    arc='x86'
    else:
-	arc='amd64'
+    arc='amd64'
    env=Environment(CCFLAGS=CCFLAGS,CPPPATH=include_path,LIBPATH=lib_path,RPATH=lib_path,LIBS=libs,ENV=ENV,MSVS_ARCH=arc,TARGET_ARCH=arc)
    #DEBUG INFORMATION
    if build_type=='Debug':

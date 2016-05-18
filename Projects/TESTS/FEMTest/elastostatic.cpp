@@ -4,17 +4,20 @@
 #include<string.h>
 #include <GL/freeglut.h>
 #include <GL/glui.h>
-#include "Physika_Core/Vectors/vector_3d.h"
+#include "Physika_Core/Vectors/vector.h"
 #include "Physika_Core/Utilities/physika_assert.h"
 #include "Physika_Render/OpenGL_Primitives/opengl_primitives.h"
 #include "Physika_GUI/Glut_Window/glut_window.h"
 #include "Physika_GUI/Glui_Window/glui_window.h"
 #include "Physika_IO/Volumetric_Mesh_IO/volumetric_mesh_io.h"
+#include "Physika_IO/Surface_Mesh_IO/surface_mesh_io.h"
 #include "Physika_Geometry/Volumetric_Meshes/volumetric_mesh.h"
 #include "Physika_Geometry/Volumetric_Meshes/cubic_mesh.h"
 #include "Physika_Geometry/Volumetric_Meshes/quad_mesh.h"
 #include "Physika_Geometry/Volumetric_Meshes/tet_mesh.h"
 #include "Physika_Geometry/Volumetric_Meshes/tri_mesh.h"
+#include "Physika_Geometry/Volumetric_Meshes/volumetric_mesh_interpolation.h"
+#include "Physika_Geometry/Boundary_Meshes/surface_mesh.h"
 #include "Physika_Render/Volumetric_Mesh_Render/volumetric_mesh_render.h"
 #include "Physika_Core/Transform/transform.h"
 #include "Physika_Dynamics/FEM/FEM_Solid_Force_Model/fem_solid_force_model.h"
@@ -184,9 +187,14 @@ void keyboardFunction(unsigned char key, int x, int y)
 }
 
 int main(){
-	vMesh = VolumetricMeshIO<double, 3>::load(string("FEMTest/bar-coarse.smesh"));    //mesh information
+	vMesh = VolumetricMeshIO<double, 3>::load(string("FEMTest/bar.smesh"));    //mesh information
+	SurfaceMesh<double> sMesh;
+	SurfaceMeshIO<double>::load(string("FEMTest/bar-render.obj"),&sMesh);
+	VolumetricMeshInterpolation<double, 3> interpolation(*vMesh);
+	interpolation.getSurfaceMeshWeights(sMesh);
 
-	fstream filein("FEMTest/fixedPointsCoarse.txt");    //fixed points
+
+	fstream filein("FEMTest/fixedPoints.txt");    //fixed points
 	int num;
 	cout << "fixed Points:" << endl;
 	while (filein >> num){
@@ -196,7 +204,7 @@ int main(){
 	cout << endl;
 	filein.close();
 
-	filein.open("FEMTest/constantForceCoarse.txt");   //constant force
+	filein.open("FEMTest/constantForce.txt");   //constant force
 	force.resize(vMesh->vertNum() * 3);
 	dx.resize(vMesh->vertNum() * 3);
 	for (unsigned int i = 0; i < vMesh->vertNum() * 3; ++i){ filein >> force[i]; force[i] = -force[i]; }
@@ -225,16 +233,18 @@ int main(){
 	solver.enableStatusLog();
 
 	//render project
-	glut_window.setCameraPosition(Vector<double, 3>(0, 0, 20));
+	glut_window.setCameraPosition(Vector<double, 3>(0, -5, 5));
 	glut_window.setCameraFocusPosition(Vector<double, 3>(0, 0, 0));
 	glut_window.setCameraNearClip(0.1);
 	glut_window.setCameraFarClip(1.0e4);
 	glut_window.setDisplayFunction(displayFunction);
 	glut_window.setInitFunction(initFunction);
 	cout << "Test GlutWindow with custom display function:\n";
-	glut_window.setIdleFunction(idleFunction);
+	//glut_window.setIdleFunction(idleFunction);
 	//glut_window.createWindow();
-
+	//glut_window.mainLoopEvent();
+	//glutPostRedisplay();
+	//getchar();
 	int j = 0;
 	do
 	{
@@ -266,11 +276,17 @@ int main(){
 		
 	} while (j < 100);
 
-
-	for (int i = 0; i < vMesh->vertNum(); ++i)vMesh->setVertPos(i, cur_pos[i]);
-	VolumetricMeshIO<double, 3>::save(string("FEMTest/bar_coarse_d.smesh"), vMesh);
+	
+	interpolation.interpolate(cur_pos, sMesh);
+	SurfaceMeshIO<double>::save(string("FEMTest/bar_fine_d.obj"), &sMesh);
 	cout << "save file OK" << endl;
 
 	delete vMesh;
 	return 0;
+}
+
+void mean_error(string file1, string file2){
+	SurfaceMesh<double> sMesh1,sMesh2;
+	SurfaceMeshIO<double>::load(string("FEMTest/bar-render.obj"), &sMesh1);
+	SurfaceMeshIO<double>::load(string("FEMTest/bar_d.obj"), &sMesh2);
 }
