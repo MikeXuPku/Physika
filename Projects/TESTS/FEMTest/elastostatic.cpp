@@ -23,6 +23,8 @@
 #include "Physika_Dynamics/FEM/FEM_Solid_Force_Model/fem_solid_force_model.h"
 #include "Physika_Dynamics/FEM/FEM_Solid_Force_Model/tri_tet_mesh_fem_solid_force_model.h"
 #include "Physika_Dynamics/Constitutive_Models/st_venant_kirchhoff.h"
+#include "NeoHookeanAnisoTerm.h"
+#include "FEMelastostatic.h"
 #include "Physika_Numerics/Linear_System_Solvers/linear_system.h"
 #include "Physika_Numerics/Linear_System_Solvers/conjugate_gradient_solver.h"
 #include "Physika_Numerics/Linear_System_Solvers/plain_generalized_vector_T.h"
@@ -30,6 +32,8 @@
 
 using namespace std;
 using namespace Physika;
+
+
 
 template <typename Scalar, int Dim>
 class StVKStiffness : public LinearSystem<Scalar>{
@@ -139,7 +143,7 @@ void displayFunction()
 }
 
 void idleFunction()
-{/*
+{
 	vector<Vector<double, 3>> cur_force;
 	pforceModel->computeGlobalInternalForces(cur_pos, cur_force);
 	for (unsigned int i = 0; i < cur_force.size(); ++i){
@@ -158,7 +162,7 @@ void idleFunction()
 		displacement[i] = cur_pos[i] - vMesh->vertPos(i);
 	}
 	psolver->reset();
-	cout << "iteration :" << endl;*/
+	cout << "iteration :" << endl;
 }
 
 void initFunction()
@@ -186,15 +190,31 @@ void keyboardFunction(unsigned char key, int x, int y)
 	}
 }
 
+void generateBoundaryForce(VolumetricMesh<double, 3>* volumetricMesh, SurfaceMesh<double> *surfaceMesh,string filename, double Scalar){
+	fstream fileout(filename+"Force.txt",ios::trunc|ios::out);
+	for (unsigned int i = 0; i < volumetricMesh->vertNum(); ++i){
+		if (volumetricMesh->isBoundaryVertex(i)){
+			Vector3d norm = surfaceMesh->vertexNormal(i);
+			fileout << Scalar*norm[0] << '\n' << Scalar*norm[1] << '\n' << Scalar*norm[2] << '\n';
+		}
+		else{
+			fileout << 0 << '\n' << 0 << '\n' << 0 << '\n';
+		}
+	}
+	fileout.close();
+	cout << "generate boundary force successfully!" << endl;
+}
+
 int main(){
-	vMesh = VolumetricMeshIO<double, 3>::load(string("FEMTest/bar.smesh"));    //mesh information
+	string filename = "FEMTest/bar-coarse";
+	vMesh = VolumetricMeshIO<double, 3>::load(filename +string(".smesh"));    //mesh information
 	SurfaceMesh<double> sMesh;
-	SurfaceMeshIO<double>::load(string("FEMTest/bar-render.obj"),&sMesh);
+	SurfaceMeshIO<double>::load(string(filename+".obj"),&sMesh);
 	VolumetricMeshInterpolation<double, 3> interpolation(*vMesh);
-	interpolation.getSurfaceMeshWeights(sMesh);
-
-
-	fstream filein("FEMTest/fixedPoints.txt");    //fixed points
+	//interpolation.getSurfaceMeshWeights(sMesh);
+	//generateBoundaryForce(vMesh,&sMesh,filename,1);
+	//*
+	fstream filein(filename+"Fixed.txt");    //fixed points
 	int num;
 	cout << "fixed Points:" << endl;
 	while (filein >> num){
@@ -204,15 +224,18 @@ int main(){
 	cout << endl;
 	filein.close();
 
-	filein.open("FEMTest/constantForce.txt");   //constant force
+	filein.open(filename+"Force.txt");   //constant force
 	force.resize(vMesh->vertNum() * 3);
 	dx.resize(vMesh->vertNum() * 3);
 	for (unsigned int i = 0; i < vMesh->vertNum() * 3; ++i){ filein >> force[i]; force[i] = -force[i]; }
 	filein.close();
 
-	StVK<double, 3> stvk(1e6, 0.3, IsotropicHyperelasticMaterialInternal::YOUNG_AND_POISSON);
+	VectorND<double> anisoDirection(3, 0);
+	anisoDirection[0] = 1;
+	NeoHookeanAnisoTerm<double, 3> neoHookeanAnisoTerm(1e6, 0.3, IsotropicHyperelasticMaterialInternal::YOUNG_AND_POISSON, anisoDirection, 0);
+	//StVK<double, 3> stvk(1e6, 0.3, IsotropicHyperelasticMaterialInternal::YOUNG_AND_POISSON);
 	vector<ConstitutiveModel<double, 3>*> constitutiveModels;
-	constitutiveModels.push_back(&stvk);
+	constitutiveModels.push_back(&neoHookeanAnisoTerm);
 	TriTetMeshFEMSolidForceModel<double, 3> forceModel(*vMesh, constitutiveModels);
 
 	//计算每个顶点的初始位置向量   初始化
@@ -233,23 +256,23 @@ int main(){
 	solver.enableStatusLog();
 
 	//render project
-	glut_window.setCameraPosition(Vector<double, 3>(0, -5, 5));
+	glut_window.setCameraPosition(Vector<double, 3>(0, 0, -10));
 	glut_window.setCameraFocusPosition(Vector<double, 3>(0, 0, 0));
 	glut_window.setCameraNearClip(0.1);
 	glut_window.setCameraFarClip(1.0e4);
 	glut_window.setDisplayFunction(displayFunction);
 	glut_window.setInitFunction(initFunction);
 	cout << "Test GlutWindow with custom display function:\n";
-	//glut_window.setIdleFunction(idleFunction);
-	//glut_window.createWindow();
-	//glut_window.mainLoopEvent();
-	//glutPostRedisplay();
-	//getchar();
+	glut_window.setIdleFunction(idleFunction);
+	glut_window.createWindow();
+	glut_window.mainLoopEvent();
+	glutPostRedisplay();
+	
 	int j = 0;
 	do
 	{
-		//glut_window.mainLoopEvent();
-		//glutPostRedisplay();
+		glut_window.mainLoopEvent();
+		glutPostRedisplay();
 		vector<Vector<double, 3>> cur_force;
 		forceModel.computeGlobalInternalForces(cur_pos, cur_force);
 		for (unsigned int i = 0; i < cur_force.size(); ++i){
@@ -273,13 +296,16 @@ int main(){
 		}
 		solver.reset();
 		cout << "iteration :" << ++j << endl;
-		
+		cout << displacement[90] << endl;
 	} while (j < 100);
-
-	
-	interpolation.interpolate(cur_pos, sMesh);
-	SurfaceMeshIO<double>::save(string("FEMTest/bar_fine_d.obj"), &sMesh);
-	cout << "save file OK" << endl;
+	getchar();
+	while (1){
+		glut_window.mainLoopEvent();
+		glutPostRedisplay();
+	}
+	/*interpolation.interpolate(cur_pos, sMesh);
+	SurfaceMeshIO<double>::save(string("FEMTest/bar_coarse_d.obj"), &sMesh);
+	cout << "save file OK" << endl;*/
 
 	delete vMesh;
 	return 0;
